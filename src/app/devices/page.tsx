@@ -90,13 +90,13 @@ export default function DevicesPage() {
     fetchDevices();
   }, [currentPage, searchTerm, statusFilter]);
 
-  // 自动刷新（每10秒）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchDevices();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [currentPage, searchTerm, statusFilter]);
+  // // 自动刷新（每10秒）
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     fetchDevices();
+  //   }, 10000);
+  //   return () => clearInterval(interval);
+  // }, [currentPage, searchTerm, statusFilter]);
 
   // 状态徽章样式
   const getStatusBadge = (status: string) => {

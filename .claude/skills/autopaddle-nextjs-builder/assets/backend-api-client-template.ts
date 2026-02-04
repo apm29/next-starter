@@ -1,5 +1,5 @@
 /**
- * AutoPaddle API Client with automatic token refresh
+ * AutoPaddle 后端 API 客户端 - 自动 token 刷新
  */
 
 /**
@@ -34,33 +34,35 @@ class AutoPaddleClient {
   }
 
   /**
-   * Make API request with automatic token refresh
+   * 发起 API 请求，自动处理 token 刷新
    */
-  private async request<T>(
+  async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
       'Authorization': `Bearer ${this.accessToken}`,
       'Tenant-ID': this.tenantId,
+      'Content-Type': 'application/json',
       ...options.headers,
     };
-
+    // console.log(url,headers);
+    
     let response = await fetch(url, { ...options, headers });
     let data = await response.json();
 
-    // Handle token expiration
+    // 处理 token 过期
     if (data.code === 401) {
       try {
         await this.refreshAccessToken();
 
-        // Retry with new token
+        // 使用新 token 重试
         headers['Authorization'] = `Bearer ${this.accessToken}`;
         response = await fetch(url, { ...options, headers });
         data = await response.json();
       } catch (error) {
-        // 如果刷新token失败，直接返回401错误对象让前端处理
+        // 如果刷新 token 失败，返回 401 错误对象让前端处理
         if (error instanceof AuthenticationError) {
           return { code: 401, msg: "Refresh token expired, please login again" } as any;
         }
@@ -69,6 +71,7 @@ class AutoPaddleClient {
     }
 
     if (data.code !== 0) {
+      console.log('API request error:', data);
       throw new Error(data.msg || 'API request failed');
     }
 
@@ -76,7 +79,7 @@ class AutoPaddleClient {
   }
 
   /**
-   * Refresh access token
+   * 刷新 access token
    */
   private async refreshAccessToken(): Promise<void> {
     const response = await fetch(
@@ -91,10 +94,9 @@ class AutoPaddleClient {
     );
 
     const data = await response.json();
-
-    // ✨ 新增：处理 refresh token 失效（401）
-    // 抛出 AuthenticationError，由前端捕获并处理跳转
-    if (data.code === 401) {
+    
+    // 处理 refresh token 失效（401）
+    if (data.code === 401 || data.code === 400 || data.code === 403) {
       throw new AuthenticationError('Refresh token expired, please login again');
     }
 
@@ -105,6 +107,12 @@ class AutoPaddleClient {
     this.accessToken = data.data.accessToken;
   }
 
+  /**
+   * 获取当前 access token
+   */
+  getAccessToken(): string {
+    return this.accessToken;
+  }
 }
 
 export default AutoPaddleClient;

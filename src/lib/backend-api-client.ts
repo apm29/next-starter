@@ -94,9 +94,10 @@ class AutoPaddleClient {
     );
 
     const data = await response.json();
-
+    console.log(data);
+    
     // 处理 refresh token 失效（401）
-    if (data.code === 401) {
+    if (data.code === 401 || data.code === 400 || data.code === 403) {
       throw new AuthenticationError('Refresh token expired, please login again');
     }
 
