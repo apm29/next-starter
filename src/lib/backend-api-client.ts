@@ -47,7 +47,7 @@ class AutoPaddleClient {
       'Content-Type': 'application/json',
       ...options.headers,
     };
-    console.log(url,headers);
+    // console.log(url,headers);
     
     let response = await fetch(url, { ...options, headers });
     let data = await response.json();

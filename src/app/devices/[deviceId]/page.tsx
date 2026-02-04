@@ -11,8 +11,15 @@ interface DeviceDetail {
   deviceNo: string;
   status: string;
   deviceType: string;
+  deviceTypeId: string;
   updateTime: string;
+  measurement?: string; // InfluxDB measurement 名称
   [key: string]: any;
+}
+
+interface PinData {
+  value: any;
+  time: string;
 }
 
 export default function DeviceDetailPage() {
@@ -21,7 +28,9 @@ export default function DeviceDetailPage() {
   const deviceId = params.deviceId as string;
 
   const [device, setDevice] = useState<DeviceDetail | null>(null);
+  const [pinData, setPinData] = useState<Record<string, PinData>>({});
   const [loading, setLoading] = useState(true);
+  const [loadingPins, setLoadingPins] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceTypeDict, setDeviceTypeDict] = useState<Record<string, any>>({});
 
@@ -56,11 +65,37 @@ export default function DeviceDetailPage() {
 
       if (data) {
         setDevice(data);
+
+        // 如果设备有 measurement，获取引脚数据
+        if (data.measurement) {
+          fetchPinData(data.measurement);
+        }
       }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 获取设备引脚数据
+  const fetchPinData = async (measurement: string) => {
+    try {
+      setLoadingPins(true);
+
+      const data = await client.request<any>(
+        `/devices/${deviceId}/pins?measurement=${measurement}&timeRange=-1h`,
+        { method: 'GET' }
+      );
+
+      if (data && data.pins) {
+        setPinData(data.pins);
+      }
+    } catch (err) {
+      console.error('获取引脚数据失败:', err);
+      // 引脚数据获取失败不影响页面显示
+    } finally {
+      setLoadingPins(false);
     }
   };
 
@@ -177,8 +212,38 @@ export default function DeviceDetailPage() {
               </div>
 
               {/* 其他信息 */}
-              {Object.keys(device).filter(key =>
-                !['deviceId', 'deviceName', 'deviceNo', 'status', 'deviceType', 'updateTime'].includes(key)
+              {Object.keys(pinData).length > 0 && (
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-900 mb-4">引脚数据（实时）</h2>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {Object.entries(pinData).map(([field, data]) => (
+                        <div key={field} className="bg-white rounded-lg p-4 shadow-sm">
+                          <div className="text-xs text-gray-500 mb-1 font-mono truncate" title={field}>
+                            {field}
+                          </div>
+                          <div className="text-2xl font-bold text-gray-900 mb-1">
+                            {typeof data.value === 'number' ? data.value.toFixed(2) : data.value}
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            {dayjs(data.time).format('HH:mm:ss')}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {loadingPins && (
+                      <div className="text-center text-gray-500 mt-4">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                        加载引脚数据中...
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* 如果没有引脚数据，显示原始详细信息 */}
+              {Object.keys(pinData).length === 0 && !loadingPins && Object.keys(device).filter(key =>
+                !['deviceId', 'deviceName', 'deviceNo', 'status', 'deviceType', 'deviceTypeId', 'updateTime', 'measurement'].includes(key)
               ).length > 0 && (
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">详细信息</h2>
@@ -187,7 +252,7 @@ export default function DeviceDetailPage() {
                       {JSON.stringify(
                         Object.fromEntries(
                           Object.entries(device).filter(([key]) =>
-                            !['deviceId', 'deviceName', 'deviceNo', 'status', 'deviceType', 'updateTime'].includes(key)
+                            !['deviceId', 'deviceName', 'deviceNo', 'status', 'deviceType', 'deviceTypeId', 'updateTime', 'measurement'].includes(key)
                           )
                         ),
                         null,
