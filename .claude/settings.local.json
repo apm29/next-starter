@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(tree:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "mcp__sequentialthinking__sequentialthinking",
+      "Bash(node scripts/search.js:*)",
+      "Bash(node scripts/matcher.js:*)",
+      "Bash(node:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tailwindcss init:*)",
+      "Bash(npm uninstall:*)",
+      "Skill(skill-creator)",
+      "Bash(python:*)",
+      "Skill(autopaddle-app-reviewer)",
+      "Bash(find:*)"
+    ]
+  }
+}
