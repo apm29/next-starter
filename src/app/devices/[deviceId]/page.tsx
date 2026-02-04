@@ -22,6 +22,16 @@ interface PinData {
   time: string;
 }
 
+interface PinInfo {
+  id: string;
+  name: string;
+  alias?: string;
+  addr?: string;
+  field: string;
+  status?: string;
+  remark?: string;
+}
+
 export default function DeviceDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -29,8 +39,10 @@ export default function DeviceDetailPage() {
 
   const [device, setDevice] = useState<DeviceDetail | null>(null);
   const [pinData, setPinData] = useState<Record<string, PinData>>({});
+  const [pinInfoDict, setPinInfoDict] = useState<Record<string, PinInfo>>({});
   const [loading, setLoading] = useState(true);
   const [loadingPins, setLoadingPins] = useState(false);
+  const [loadingPinInfo, setLoadingPinInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deviceTypeDict, setDeviceTypeDict] = useState<Record<string, any>>({});
 
@@ -66,15 +78,40 @@ export default function DeviceDetailPage() {
       if (data) {
         setDevice(data);
 
-        // 如果设备有 measurement，获取引脚数据
+        // 如果设备有 measurement，获取引脚信息和引脚数据
         if (data.measurement) {
-          fetchPinData(data.measurement);
+          // 并行获取引脚信息和引脚数据
+          Promise.all([
+            fetchPinInfo(),
+            fetchPinData(data.measurement)
+          ]);
         }
       }
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // 获取设备引脚信息字典
+  const fetchPinInfo = async () => {
+    try {
+      setLoadingPinInfo(true);
+
+      const data = await client.request<any>(
+        `/devices/${deviceId}/pin-info`,
+        { method: 'GET' }
+      );
+
+      if (data && data.dict) {
+        setPinInfoDict(data.dict);
+      }
+    } catch (err) {
+      console.error('获取引脚信息失败:', err);
+      // 引脚信息获取失败不影响页面显示
+    } finally {
+      setLoadingPinInfo(false);
     }
   };
 
@@ -97,6 +134,16 @@ export default function DeviceDetailPage() {
     } finally {
       setLoadingPins(false);
     }
+  };
+
+  // 获取引脚的友好名称
+  const getPinDisplayName = (field: string): string => {
+    const pinInfo = pinInfoDict[field];
+    if (pinInfo) {
+      // 优先使用别名，其次使用名称，最后使用字段名
+      return pinInfo.alias || pinInfo.name || field;
+    }
+    return field;
   };
 
   // 处理 SSO 回调
@@ -211,25 +258,48 @@ export default function DeviceDetailPage() {
                 </div>
               </div>
 
-              {/* 其他信息 */}
+              {/* 引脚数据 */}
               {Object.keys(pinData).length > 0 && (
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900 mb-4">引脚数据（实时）</h2>
                   <div className="bg-gray-50 rounded-lg p-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {Object.entries(pinData).map(([field, data]) => (
-                        <div key={field} className="bg-white rounded-lg p-4 shadow-sm">
-                          <div className="text-xs text-gray-500 mb-1 font-mono truncate" title={field}>
-                            {field}
+                      {Object.entries(pinData).map(([field, data]) => {
+                        const displayName = getPinDisplayName(field);
+                        const pinInfo = pinInfoDict[field];
+
+                        return (
+                          <div key={field} className="bg-white rounded-lg p-4 shadow-sm">
+                            {/* 引脚名称 */}
+                            <div className="text-sm font-medium text-gray-900 mb-1" title={field}>
+                              {displayName}
+                            </div>
+                            {/* 引脚地址（如果有） */}
+                            {pinInfo?.addr && (
+                              <div className="text-xs text-gray-400 mb-2">
+                                地址: {pinInfo.addr}
+                              </div>
+                            )}
+                            {/* 引脚值 */}
+                            <div className="text-2xl font-bold text-blue-600 mb-1">
+                              {typeof data.value === 'number' ? data.value.toFixed(2) : data.value}
+                            </div>
+                            {/* 更新时间 */}
+                            <div className="text-xs text-gray-400">
+                              {dayjs(data.time).format('HH:mm:ss')}
+                            </div>
+                            {/* 技术字段名（折叠显示） */}
+                            <details className="mt-2">
+                              <summary className="text-xs text-gray-400 cursor-pointer hover:text-gray-600">
+                                技术信息
+                              </summary>
+                              <div className="mt-1 text-xs text-gray-500 font-mono break-all">
+                                {field}
+                              </div>
+                            </details>
                           </div>
-                          <div className="text-2xl font-bold text-gray-900 mb-1">
-                            {typeof data.value === 'number' ? data.value.toFixed(2) : data.value}
-                          </div>
-                          <div className="text-xs text-gray-400">
-                            {dayjs(data.time).format('HH:mm:ss')}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     {loadingPins && (
                       <div className="text-center text-gray-500 mt-4">
