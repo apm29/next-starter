@@ -10,7 +10,7 @@ const influxDB = new InfluxDB({
   token: 'autopaddle-api-token'
 });
 
-const queryApi = influxDB.getQueryApi('autopaddle');
+const queryApi = influxDB.getQueryApi('autopaddle-org');
 ```
 
 ## Data Model
