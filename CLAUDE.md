@@ -1,8 +1,10 @@
-# AutoPaddle 设备监控系统 - AI Agent 指南
+# AutoPaddle 示例项目 - AI Agent 指南
 
 ## 📋 项目概述
 
-这是一个基于 Next.js 16 的 AutoPaddle 设备监控系统，集成了 AutoPaddle 云服务和 InfluxDB 时序数据库，用于实时监控和管理 IoT 设备。
+这是一个基于 Next.js 16 的 AutoPaddle 示例项目，集成了 AutoPaddle 云服务和 InfluxDB 时序数据库，用于演示如何接入Autopaddle云服务、InfluxDB、Sqlite。
+
+这个项目是新项目的骨架，不需要兼容旧版API或者数据存储结构；Agent可以删除原有的页面和逻辑重新根据用户的需求生成。
 
 **项目类型**: Next.js Web 应用（App Router）
 **主要功能**: 设备列表管理、设备详情查看、实时引脚数据监控
@@ -22,6 +24,7 @@
 ### 数据集成
 - **@influxdata/influxdb-client**: ^1.35.0 - InfluxDB 时序数据库客户端
 - **dayjs**: ^1.11.19 - 时间格式化库
+- **better-sqlite3**: ^11.8.1 - SQLite 数据库（本地存储）
 
 ### 认证
 - **SSO 单点登录**: 通过 AutoPaddle 云服务
@@ -49,12 +52,20 @@ next-starter/
 │   │       │       ├── route.ts      # 设备详情
 │   │       │       ├── pins/route.ts # 设备引脚数据（InfluxDB）
 │   │       │       └── pin-info/route.ts # 设备引脚信息（AutoPaddle）
-│   │       └── device-types/route.ts # 设备类型字典
+│   │       ├── device-types/route.ts # 设备类型字典
+│   │       └── settings/             # 用户配置 API（SQLite）
+│   │           └── route.ts          # GET (获取), PUT (更新), DELETE (删除)
 │   ├── lib/                          # 工具库
 │   │   ├── backend-api-client.ts     # 后端 API 客户端（AutoPaddle）
 │   │   ├── frontend-api-client.ts    # 前端 API 客户端（Next.js API）
-│   │   └── influxdb-client.ts        # InfluxDB 客户端
+│   │   ├── influxdb-client.ts        # InfluxDB 客户端
+│   │   ├── sqlite-client.ts          # SQLite 客户端
+│   │   └── db/                       # 数据库相关
+│   │       ├── schema.ts             # 数据库 schema 定义
+│   │       └── init.ts               # 数据库初始化
 │   └── ...
+├── data/                             # 数据库文件目录
+│   └── app.db                        # SQLite 数据库文件
 ├── .claude/                          # Claude AI 技能配置
 │   └── skills/
 │       ├── autopaddle-nextjs-builder/
@@ -64,6 +75,7 @@ next-starter/
 ├── package.json
 ├── tsconfig.json
 └── CLAUDE.md                         # 本文件
+```
 ```
 
 ## 🔑 核心功能
@@ -98,6 +110,11 @@ next-starter/
   - 功能特性展示
   - 响应式设计
 
+### 4. 本地数据存储（SQLite）
+- **用户配置**: 存储用户偏好设置（主题、语言等）
+- **数据源**: SQLite 本地数据库 (`data/app.db`)
+- **示例用途**: 展示如何在 Next.js 项目中集成 SQLite 数据库
+
 ## 🔌 API 集成说明
 
 ### AutoPaddle 云服务 API
@@ -131,6 +148,45 @@ next-starter/
    - 返回: 设备引脚配置信息（包含名称、别名、地址等）
 
 **其他接口**: 可参考 `autopaddle-api-explorer` skill 查找更多接口
+
+### SQLite 本地数据库
+
+**数据库文件**: `data/app.db`
+
+**数据表**:
+1. **user_settings (用户配置)**
+   - 字段: key, value, updated_at
+   - 用途: 存储用户偏好设置（键值对）
+
+**API 接口**:
+1. **用户配置**:
+   - `GET /api/settings` - 获取配置（支持单个或全部）
+   - `PUT /api/settings` - 更新配置
+   - `DELETE /api/settings` - 删除配置
+
+**使用示例**:
+```typescript
+import SQLiteClient from '@/lib/sqlite-client';
+import { TABLE_NAMES } from '@/lib/db/schema';
+
+// 获取数据库实例
+const db = SQLiteClient.getInstance();
+
+// 查询配置
+const settings = db.query('SELECT * FROM user_settings');
+
+// 插入或更新配置
+const result = db.run(
+  'INSERT OR REPLACE INTO user_settings (key, value, updated_at) VALUES (?, ?, ?)',
+  ['theme', '"dark"', Date.now()]
+);
+
+// 事务操作
+db.transaction(() => {
+  db.run('INSERT OR REPLACE INTO user_settings ...');
+  db.run('INSERT OR REPLACE INTO user_settings ...');
+});
+```
 
 ### InfluxDB 时序数据库
 
@@ -272,6 +328,79 @@ export async function GET(request: NextRequest) {
 }
 ```
 
+### 使用 SQLite 数据库
+
+1. 导入 SQLite 客户端和 schema
+2. 获取数据库实例（单例模式）
+3. 使用 query/queryOne/run 方法操作数据
+4. 遵循项目统一的响应格式
+
+**示例**:
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import SQLiteClient from '@/lib/sqlite-client';
+import { TABLE_NAMES, UserSetting } from '@/lib/db/schema';
+
+export async function GET(request: NextRequest) {
+  try {
+    const db = SQLiteClient.getInstance();
+
+    // 查询所有配置
+    const settings = db.query<UserSetting>(
+      `SELECT * FROM ${TABLE_NAMES.USER_SETTINGS}`
+    );
+
+    // 转换为键值对对象
+    const data: Record<string, any> = {};
+    for (const setting of settings) {
+      try {
+        data[setting.key] = JSON.parse(setting.value);
+      } catch {
+        data[setting.key] = setting.value;
+      }
+    }
+
+    return NextResponse.json({
+      code: 0,
+      data,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { code: 500, msg: (error as Error).message },
+      { status: 200 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { key, value } = body;
+
+    const db = SQLiteClient.getInstance();
+
+    // 将值转换为 JSON 字符串
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+
+    // 插入或更新配置
+    db.run(
+      `INSERT OR REPLACE INTO ${TABLE_NAMES.USER_SETTINGS} (key, value, updated_at) VALUES (?, ?, ?)`,
+      [key, valueStr, Date.now()]
+    );
+
+    return NextResponse.json({
+      code: 0,
+      msg: '配置更新成功',
+    });
+  } catch (error) {
+    return NextResponse.json(
+      { code: 500, msg: (error as Error).message },
+      { status: 200 }
+    );
+  }
+}
+```
+
 ### 查询 InfluxDB 数据
 
 1. 使用 `src/lib/influxdb-client.ts` 中的函数
@@ -335,6 +464,44 @@ useEffect(() => {
 }, []);
 ```
 
+### 任务 5: 扩展 SQLite 数据库（添加新表）
+
+**示例**: 添加 `favorites` 表存储收藏的设备
+
+1. 在 `src/lib/db/schema.ts` 添加新表定义:
+   ```typescript
+   export interface Favorite {
+     id: number;
+     device_id: string;
+     device_name: string | null;
+     created_at: number;
+   }
+
+   export const CREATE_FAVORITES_TABLE = `
+     CREATE TABLE IF NOT EXISTS favorites (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       device_id TEXT NOT NULL,
+       device_name TEXT,
+       created_at INTEGER NOT NULL,
+       UNIQUE(device_id)
+     )
+   `;
+   ```
+
+2. 在 `src/lib/db/schema.ts` 的 `ALL_CREATE_STATEMENTS` 数组中添加新表:
+   ```typescript
+   export const ALL_CREATE_STATEMENTS = [
+     CREATE_USER_SETTINGS_TABLE,
+     CREATE_FAVORITES_TABLE, // 新增
+   ];
+   ```
+
+3. 创建对应的 API 路由 `src/app/api/favorites/route.ts`
+
+4. 使用 SQLiteClient 操作新表
+
+**注意**: 添加新表后需要删除旧的数据库文件 `data/app.db`，重启服务器会自动创建包含新表的数据库。
+
 ## ⚠️ 重要注意事项
 
 ### 1. 认证信息安全
@@ -369,6 +536,14 @@ useEffect(() => {
 - ❌ **错误**: 不要使用 `autopaddle`（旧配置）
 - ✅ **正确**: 从设备详情 API 获取 measurement 名称
 - ✅ **正确**: 从引脚信息 API 获取 field 名称
+
+### 7. SQLite 数据库使用
+- ✅ **正确**: 使用 `SQLiteClient.getInstance()` 获取单例实例
+- ✅ **正确**: 使用参数化查询防止 SQL 注入
+- ✅ **正确**: 数据库文件存放在 `data/app.db`
+- ✅ **正确**: 使用事务处理多个相关操作
+- ❌ **错误**: 不要在前端直接操作 SQLite（仅在 API 路由中使用）
+- ✅ **正确**: 遵循项目统一的响应格式 `{ code, data, msg }`
 
 ## 📚 相关技能 (Claude Skills)
 

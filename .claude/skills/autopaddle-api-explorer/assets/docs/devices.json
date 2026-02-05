@@ -108,7 +108,7 @@
                 "tags": [
                     "管理后台 - 设备休息时间段配置"
                 ],
-                "summary": "更新设备休息时间段配置",
+                "summary": "更新设备休息时间段配置，用于在设备日报表生成时排除这段时间，设备离线、空闲报警（来自设备状态报警部分）也不会在这段时间触发",
                 "operationId": "updateRestTimePeriod",
                 "parameters": [
                     {
@@ -261,7 +261,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "网关ID",
+                            "description": "网关ID，来自于autoGateway的主键id",
                             "example": 1426
                         },
                         "example": 1426
@@ -273,7 +273,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "身份证卡（每个Flow流程的左上角第一个标识节点）"
+                            "description": "身份证卡（每个Flow流程的左上角第一个标识节点），用于云端对流程的操作，不用展示在页面上"
                         }
                     },
                     {
@@ -283,7 +283,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "标签卡ID（用于删除标签卡）",
+                            "description": "标签卡ID（用于删除标签卡），用于云端对流程的操作，不用展示在页面上",
                             "example": 4679
                         },
                         "example": 4679
@@ -295,7 +295,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "1实体设备 2OCR 3文件",
+                            "description": "1实体设备 2OCR 3文件；枚举类型，可按照类型展示，不同类型的设备详情字段不一样",
                             "example": 2
                         },
                         "example": 2
@@ -308,9 +308,9 @@
                         "schema": {
                             "type": "string",
                             "description": "设备名称",
-                            "example": "王五"
+                            "example": "#0700-新代"
                         },
-                        "example": "王五"
+                        "example": "#0700-新代"
                     },
                     {
                         "name": "deviceDescription",
@@ -320,9 +320,9 @@
                         "schema": {
                             "type": "string",
                             "description": "设备描述",
-                            "example": "你猜"
+                            "example": "二号车间-#444"
                         },
-                        "example": "你猜"
+                        "example": "二号车间-#444"
                     },
                     {
                         "name": "deviceTypeId",
@@ -331,7 +331,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "设备类型ID",
+                            "description": "设备类型ID,来自deviceType的主键id，页面上应当展示deviceType的name字段",
                             "example": 25777
                         },
                         "example": 25777
@@ -343,7 +343,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "品牌ID",
+                            "description": "品牌ID,来自deviceBrand的主键id，页面上应当展示deviceBrand的name字段",
                             "example": 14243
                         },
                         "example": 14243
@@ -355,7 +355,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "系列ID",
+                            "description": "系列ID,来自deviceBrandSeries的主键id，页面上应当展示deviceBrandSeries的name字段",
                             "example": 23372
                         },
                         "example": 23372
@@ -367,7 +367,7 @@
                         "required": true,
                         "schema": {
                             "type": "string",
-                            "description": "CPUID",
+                            "description": "CPUID,来自deviceBrandSeriesCpu的主键id，页面上应当展示deviceBrandSeriesCpu的name字段",
                             "example": 11361
                         },
                         "example": 11361
@@ -379,7 +379,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "CPU版本ID",
+                            "description": "CPU版本ID，已弃用",
                             "example": 25965
                         },
                         "example": 25965
@@ -391,7 +391,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "模板ID",
+                            "description": "模板ID,用于确定该设备对应哪一个设备模板",
                             "example": 16612
                         },
                         "example": 16612
@@ -403,7 +403,7 @@
                         "required": false,
                         "schema": {
                             "type": "string",
-                            "description": "参数JSON"
+                            "description": "参数JSON，模板所需的参数，根据模板中的参数列表生成表单，由用户对应值"
                         }
                     },
                     {
@@ -4959,7 +4959,7 @@
                 "tags": [
                     "管理后台 - 设备休息时间段配置"
                 ],
-                "summary": "创建设备休息时间段配置",
+                "summary": "创建设备休息时间段配置，用于在设备日报表生成时排除这段时间，设备离线、空闲报警（来自设备状态报警部分）也不会在这段时间触发",
                 "operationId": "createRestTimePeriod",
                 "parameters": [
                     {
@@ -11850,7 +11850,7 @@
                 "tags": [
                     "管理后台 - 设备休息时间段配置"
                 ],
-                "summary": "获得设备休息时间段配置",
+                "summary": "获得设备休息时间段配置，用于在设备日报表生成时排除这段时间，设备离线、空闲报警（来自设备状态报警部分）也不会在这段时间触发",
                 "operationId": "getRestTimePeriod",
                 "parameters": [
                     {
@@ -11884,7 +11884,7 @@
                 "tags": [
                     "管理后台 - 设备休息时间段配置"
                 ],
-                "summary": "导出设备休息时间段配置 Excel",
+                "summary": "导出设备休息时间段配置 Excel 用于在设备日报表生成时排除这段时间，设备离线、空闲报警（来自设备状态报警部分）也不会在这段时间触发",
                 "operationId": "exportRestTimePeriodExcel",
                 "parameters": [
                     {
